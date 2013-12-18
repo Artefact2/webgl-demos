@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>WebGL demo</title>
+<meta charset='utf-8' />
+<link type='text/css' href='./skel.css' rel='stylesheet' />
+<script type='application/javascript' src='https://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js'></script>
+<script type='application/javascript' src='https://cdn.jsdelivr.net/glmatrix/2.2.0/gl-matrix.js'></script>
+<script type='application/javascript' src='./glsoup.js'></script>
+<script type='application/javascript'>
+$(function() {
+	var canvas = document.createElement('canvas');
+	var body = $('body');
+	body.append(canvas);
+
+	var gl = create_context(canvas);
+	if(gl === false) return;
+
+	gl.enable(gl.DEPTH_TEST);
+	gl.enable(gl.BLEND);
+	gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+
+	var prog = create_program_vf(gl, $("pre#vs").text(), $("pre#fs").text())[0];
+	gl.useProgram(prog);
+
+	var aposition = gl.getAttribLocation(prog, "position");
+	gl.enableVertexAttribArray(aposition);
+
+	var upmat = gl.getUniformLocation(prog, "pmat");
+	var ulayer = gl.getUniformLocation(prog, "layer");
+	var unframe = gl.getUniformLocation(prog, "nframe");
+
+	var ibuffer = gl.createBuffer();
+	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibuffer);
+	gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint8Array([
+		0, 2, 1,
+		2, 0, 3
+	]), gl.STATIC_DRAW);
+
+	var vbuffer = gl.createBuffer();
+	gl.bindBuffer(gl.ARRAY_BUFFER, vbuffer);
+	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+		-1.0, -1.0, 0.0,
+		-1.0, 1.0, 0.0,
+		1.0, 1.0, 0.0,
+		1.0, -1.0, 0.0
+	]), gl.STATIC_DRAW);
+	gl.vertexAttribPointer(aposition, 3, gl.FLOAT, false, 0, 0);
+
+	var pmat = mat4.create();
+
+	var viewportchanged = function(nw, nh) {
+		mat4.perspective(pmat, 1.0, nw / nh, 1, 1000);
+		mat4.translate(pmat, pmat, [ 0.0, 0.0, -50.0 ]);
+		gl.uniformMatrix4fv(upmat, false, new Float32Array(pmat));
+	};
+
+	var layers = 10;
+	var nframe = 0;
+
+	var frame = function() {
+		t = new Date().getTime();
+
+		mat4.translate(pmat, pmat, [ 
+				.05 * Math.cos(t / 1000) * Math.sin(2 + t / 6000),
+				.05 * Math.sin(t / 1000) * Math.cos(3 + t / 6000),
+				.5 * Math.cos(t / 1000) * Math.sin(1 + t / 5000)
+		]);
+		mat4.rotateX(pmat, pmat, .0005 * Math.cos(t / 2000) * Math.sin(1 + t / 5000));
+		mat4.rotateY(pmat, pmat, .0005 * Math.cos(1 + t / 4000) * Math.sin(t / 3000));
+		mat4.rotateZ(pmat, pmat, .0005 * Math.cos(1 + t / 15000) + .0001 * Math.sin(t / 5000));
+		gl.uniformMatrix4fv(upmat, false, new Float32Array(pmat));
+		gl.uniform1i(unframe, nframe);
+
+		for(var i = 0; i < layers; ++i) {
+			gl.uniform1i(ulayer, i);
+			gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_BYTE, 0);
+		}
+
+		++nframe;
+	};
+
+	animate(gl, canvas, frame, viewportchanged);
+});
+</script>
+</head>
+<body>
+<pre class='shader' id='vs'>
+attribute vec3 position;
+uniform mat4 pmat;
+uniform mediump int layer;
+
+varying mediump vec2 xy;
+
+void main() {
+	gl_Position = pmat * vec4(1000.0 * position.x, 1000.0 * position.y, -5.0 * float(layer), 1.0);
+	xy = position.xy;
+}
+</pre>
+<pre class='shader' id='fs'>
+uniform mediump int layer;
+uniform mediump int nframe;
+
+varying mediump vec2 xy;
+
+mediump float rand(mediump vec2 seed) {
+	return fract(sin(dot(seed.xy ,vec2(12.9898,78.233))) * 43758.5453);
+}
+
+void main() {
+	mediump float scale = 0.01;
+	mediump float dist = pow(xy.x, 2.0) + pow(xy.y, 2.0);
+
+	bool x = mod(xy.x, scale) < .5 * scale;
+	bool y = mod(xy.y, scale) < .5 * scale;
+
+	if((x && y) || (!x && !y)) {
+		discard;
+	}
+
+
+	mediump vec2 sq = vec2(
+		floor(2.0 * xy.x / scale),
+		floor(2.0 * xy.y / scale) + 2.0 * floor(float((nframe / 120)))
+	);
+
+	mediump float d = floor(10.0 * rand(sq));
+
+	if(float(layer) < d) {
+		discard;
+	}
+
+	mediump float b = .2 * rand(sq + vec2(920.0, 920.0));
+	mediump float g = .2 * rand(sq + vec2(240.0, 240.0));
+	mediump float opacity = exp(-100.0 * dist*dist) * exp(-.05 * pow(float(layer), 2.0));
+
+	gl_FragColor = vec4(
+		vec3(.2 + b, .5 + g, 1.0), opacity
+	);
+}
+</pre>
+</body>
+</html>
+<!-- Inspiration: http://youtu.be/iQqJm14sHRY?t=4m20s -->
