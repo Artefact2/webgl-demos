@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>WebGL demo</title>
+<meta charset='utf-8' />
+<link type='text/css' href='./skel.css' rel='stylesheet' />
+<script type='application/javascript' src='https://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js'></script>
+<script type='application/javascript' src='https://cdn.jsdelivr.net/glmatrix/2.2.0/gl-matrix.js'></script>
+<script type='application/javascript' src='./glsoup.js'></script>
+<script type='application/javascript'>
+$(function() {
+	var canvas = document.createElement('canvas');
+	var body = $('body');
+	body.append(canvas);
+
+	var gl = create_context(canvas);
+	if(gl === false) return;
+
+	var prog = create_program_vf(gl, $("pre#vs").text(), $("pre#fs").text())[0];
+	gl.useProgram(prog);
+
+	var aposition = gl.getAttribLocation(prog, "position");
+	gl.enableVertexAttribArray(aposition);
+
+	var unframe = gl.getUniformLocation(prog, "nframe");
+
+	var ibuffer = gl.createBuffer();
+	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibuffer);
+	gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint8Array([
+		0, 2, 1,
+		2, 0, 3
+	]), gl.STATIC_DRAW);
+
+	var vbuffer = gl.createBuffer();
+	gl.bindBuffer(gl.ARRAY_BUFFER, vbuffer);
+	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+		-1.0, -1.0, 0.0,
+		-1.0, 1.0, 0.0,
+		1.0, 1.0, 0.0,
+		1.0, -1.0, 0.0
+	]), gl.STATIC_DRAW);
+	gl.vertexAttribPointer(aposition, 3, gl.FLOAT, false, 0, 0);
+
+	var pmat = mat4.create();
+
+	var viewportchanged = function(nw, nh) { };
+
+	var nframe = 0;
+
+	var frame = function() {
+		gl.uniform1i(unframe, nframe);
+		gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_BYTE, 0);
+		++nframe;
+	};
+
+	animate(gl, canvas, frame, viewportchanged);
+});
+</script>
+</head>
+<body>
+<pre class='shader' id='vs'>
+attribute vec3 position;
+
+void main() {
+	gl_Position = vec4(position, 1.0);
+}
+</pre>
+<pre class='shader' id='fs'>
+uniform mediump int nframe;
+
+mediump float rand(mediump vec2 seed) {
+	return fract(sin(dot(seed.xy, vec2(12.9898 + sin(float(nframe)), 78.233 - cos(float(nframe))))) * 43758.5453);
+}
+
+void main() {
+	gl_FragColor = vec4(vec3(rand(gl_FragCoord.xy)), 1.0);
+}
+</pre>
+</body>
+</html>
+
