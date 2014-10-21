@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>WebGL demo</title>
+<meta charset='utf-8' />
+<link type='text/css' href='./skel.css' rel='stylesheet' />
+<script type='application/javascript' src='https://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js'></script>
+<script type='application/javascript' src='https://cdn.jsdelivr.net/glmatrix/2.2.0/gl-matrix.js'></script>
+<script type='application/javascript' src='./glsoup.js'></script>
+<script type='application/javascript'>
+$(function() {
+	var canvas = document.createElement('canvas');
+	var body = $('body');
+	body.append(canvas);
+
+	var gl = create_context(canvas);
+	if(gl === false) return;
+
+	gl.enable(gl.BLEND);
+	gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+	var prog = create_program_vf(gl, $("pre#vs").text(), $("pre#fs").text())[0];
+	gl.useProgram(prog);
+
+	var aposition = gl.getAttribLocation(prog, "position");
+	gl.enableVertexAttribArray(aposition);
+
+	var umodelmat = gl.getUniformLocation(prog, "modelmat");
+	var upmat = gl.getUniformLocation(prog, "pmat");
+	var ut = gl.getUniformLocation(prog, "t");
+
+	var points = [];
+	var detail = 64;
+	for(var i = 0; i < detail; ++i) {
+		var x = -1 + i * 2 / (detail - 1);
+
+		for(var j = 0; j < detail; ++j) {
+			var y = -1 + j * 2 / (detail - 1);
+
+			for(var k = 0; k < detail; ++k) {
+				var z = -1 + k * 2 / (detail - 1);
+
+				points.push(x, y, z);
+			}
+		}
+	}
+
+	var vbuffer = gl.createBuffer();
+	gl.bindBuffer(gl.ARRAY_BUFFER, vbuffer);
+	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(points), gl.STATIC_DRAW);
+	gl.vertexAttribPointer(aposition, 3, gl.FLOAT, false, 0, 0);
+
+	var q = quat.create();
+	var modelmat = mat4.create();
+	var pmat = mat4.create();
+	var t0 = new Date().getTime();
+
+	var viewportchanged = function(nw, nh) {
+		mat4.perspective(pmat, 1.0, nw / nh, 0.1, 10000);
+		gl.uniformMatrix4fv(upmat, false, new Float32Array(pmat));
+	};
+
+	var frame = function() {
+		t = new Date().getTime() - t0;
+
+		quat.rotateY(q, q, .01);
+		quat.rotateX(q, q, .005 * Math.sin(t / 2000));
+		mat4.fromRotationTranslation(modelmat, q, [ 0.0, 0.0, -5.0 ]);
+		gl.uniformMatrix4fv(umodelmat, false, new Float32Array(modelmat));
+		gl.uniform1f(ut, t);
+
+		gl.drawArrays(gl.POINTS, 0, detail*detail*detail);
+	};
+
+	animate(gl, canvas, frame, viewportchanged);
+});
+</script>
+</head>
+<body>
+<pre class='shader' id='vs'>
+attribute vec3 position;
+uniform mat4 modelmat;
+uniform mat4 pmat;
+uniform mediump float t;
+
+varying mediump vec3 vpos;
+varying mediump float depth;
+
+void main() {
+	mediump float c, s, theta, w;
+
+	theta = (.75 + .25 * sin(t / 10000.)) * cos(t / 1000.);
+	c = cos(position.y * theta);
+	s = sin(position.y * theta);
+	w = 1.25 - .25 * sin(t / 5000.);
+
+	vec4 rcoords = modelmat * vec4(
+		w*(position.x * c + position.z * s),
+		w*position.y,
+		w*(-position.x * s + position.z * c),
+		1.0
+	);
+	gl_Position = pmat * rcoords;
+	gl_PointSize = w * 2.0 * length(position);
+	depth = rcoords.z + 5.0 - 1.73205;
+	vpos = position;
+}
+</pre>
+<pre class='shader' id='fs'>
+varying mediump vec3 vpos;
+varying mediump float depth;
+
+void main() {
+	gl_FragColor = vec4(
+		(1.0 + vpos.x) / 2.0,
+		(1.0 + vpos.y) / 2.0,
+		(1.0 + vpos.z) / 2.0,
+		exp(-1.0 * depth * depth)
+	);
+}
+</pre>
+</body>
+</html>
