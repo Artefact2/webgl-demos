@@ -1,6 +1,6 @@
 Just me experimenting with WebGL.
 
-See a live demo at <http://artefact2.com/files/webgl-demos/>.
+**[See a live demo.](https://artefact2.github.io/webgl-demos/)**
 
 All my code is released under the WTFPL version 2. See the COPYING
 file for the full license text.
