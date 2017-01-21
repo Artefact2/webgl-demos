@@ -139,16 +139,17 @@ $(function() {
 </head>
 <body>
 <pre class='shader' id='vs'>
+precision mediump float;
 attribute vec3 position;
 attribute vec2 tc;
 
 uniform mat4 projMat;
 uniform mat4 modelMat;
-uniform mediump float secs;
+uniform float secs;
 uniform int strlen;
 
-varying mediump vec3 vPosition;
-varying mediump vec2 vTextureCoord;
+varying vec3 vPosition;
+varying vec2 vTextureCoord;
 
 void main(void) {
 	gl_Position = projMat * modelMat * vec4(
@@ -161,10 +162,11 @@ void main(void) {
 }
 </pre>
 <pre class='shader' id='fs'>
-varying mediump vec3 vPosition;	
-varying mediump vec2 vTextureCoord;
+precision mediump float;
+varying vec3 vPosition;	
+varying vec2 vTextureCoord;
 uniform sampler2D texture;
-uniform mediump float secs;
+uniform float secs;
 
 /* Stolen from Sam Hocevar. See:
  * https://gamedev.stackexchange.com/a/59808 */
