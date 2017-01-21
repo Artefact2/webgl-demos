@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>I'd just like to interject for a moment.</title>
+<meta charset='utf-8' />
+<link type='text/css' href='./skel.css' rel='stylesheet' />
+<script type='application/javascript' src='https://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js'></script>
+<script type='application/javascript' src='https://cdn.jsdelivr.net/glmatrix/2.2.0/gl-matrix.js'></script>
+<script type='application/javascript' src='./glsoup.js'></script>
+<script type='application/javascript'>
+$(function() {
+	var canvas = document.createElement('canvas');
+	var body = $('body');
+	body.append(canvas);
+
+	var gl = create_context(canvas);
+	if(gl === false) return;
+	
+	gl.enable(gl.BLEND);
+	gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+
+	var fontimg = new Image();
+	fontimg.src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAAA2AQMAAAACgQ6RAAAABlBMVEUAAAD///+l2Z/dAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH4QEPDjYOEPXKGQAAAeBJREFUKM9V0b9vEzEUB3AvVZeAjikT6b+QpSpSFaFIMDPw4yaLoUMnKkXKxSWp46lMtBn7VxQ2YIgU3V6RMKSuuDhPyOOJnJAAI6XO4zltpMaTP7L9vn42w3YOC/cHacwZobcQs1uo9MUVgnKIjpA//ITQXmF4iCDT660ibHt1GVYACZifnKkZEiBsg39IpQeecGew3qG9KKenj2luWUvwc+cTOj43bFvINwTuwHsWd+1BdX4C2K/MWSz9pu60tlChYPsdX4xFbFy/4pgQ5qcWAugMsvfR3uyR60FRzN166GnVlqJ6M+JS11mieeJAdLOjM054vYSWzzl7EkEz+rbZHcoxZy/DihGES86e3kJLzZkMBQhZwPHIlspp84HZoNJroaUo3aCdo0ZfYsgxBBCD9grnUwpW7N4oJUwiAQqptDTfxx8zVwTEAULf4HNAop0jHMX1aS1vRo3fKl0PHTh0C3qnJYDgCQCE2Q7+rVkll8CRPZ4YhRnQL1yXebP245nU0y+GeerU+x05NDEn8MQYkeiARWTf7VrxNjN6bz10Nfk1obvR10KAC/0kYAme/qeTs+QKeojJaB+2Fb2BpbY/VBwknN0ve2oOjIOuZUr7mzcIBZS2X2t5q9oIpe+G/gcse9tYsP2e1AAAAABJRU5ErkJggg==";
+
+	var fonttex = gl.createTexture();
+	gl.bindTexture(gl.TEXTURE_2D, fonttex);
+	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, fontimg);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+	var prog = create_program_vf(gl, $("pre#vs").text(), $("pre#fs").text())[0];
+	gl.useProgram(prog);
+
+	var aposition = gl.getAttribLocation(prog, "position");
+	gl.enableVertexAttribArray(aposition);
+
+	var atextureCoord = gl.getAttribLocation(prog, "tc");
+	gl.enableVertexAttribArray(atextureCoord);
+
+	var umodelMat = gl.getUniformLocation(prog, "modelMat");
+	var uprojMat = gl.getUniformLocation(prog, "projMat");
+	var utexture = gl.getUniformLocation(prog, "texture");
+	gl.uniform1i(utexture, 0);
+	var usecs = gl.getUniformLocation(prog, "secs");
+	var ustrlen = gl.getUniformLocation(prog, "strlen");
+
+	var createText = function(str) {
+		var vbuf, ebuf, uvbuf;
+		var vertices = [], elements = [], uv = [];
+		var x = 0, y = 0, c = 0, e = 0;
+
+		for(var i = 0; i < str.length; ++i) {
+			var code = str.charCodeAt(i);
+			if(code === 0x0A) {
+				y -= 9;
+				x = 0;
+				continue;
+			}
+			code -= 0x20;
+			if(code < 0 || code >= 0x60) code = 0;
+
+			var u = (code % 0x10) / 0x10;
+			var du = .95 / 0x10;
+			var v = (code - code % 0x10) / 0x10 / 6.0;
+			var dv = .95 / 6.0;
+			
+			vertices.push(
+				x,       y,       -100.0,
+				x + 6.0, y,       -100.0,
+				x + 6.0, y + 9.0, -100.0,
+				x,       y + 9.0, -100.0
+			);
+			uv.push(
+				u,      v + dv,
+				u + du, v + dv,
+				u + du, v,
+				u,      v
+			);
+			elements.push(
+				c, c + 1, c + 2,
+				c + 2, c + 3, c
+			);
+
+			x += 6;
+			c += 4;
+			e += 6;
+		}
+		
+		var vbuf = gl.createBuffer();
+		gl.bindBuffer(gl.ARRAY_BUFFER, vbuf);
+		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+
+		var uvbuf = gl.createBuffer();
+		gl.bindBuffer(gl.ARRAY_BUFFER, uvbuf);
+		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(uv), gl.STATIC_DRAW);
+
+		var ebuf = gl.createBuffer();
+		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ebuf);
+		gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(elements), gl.STATIC_DRAW);
+
+		return [ vbuf, uvbuf, ebuf, e ];
+	};
+
+	var text = "I'd just like to interject for a moment. What you're referring to as Linux, is in fact, GNU/Linux, or as I've recently taken to calling it, GNU plus Linux. Linux is not an operating system unto itself, but rather another free component of a fully functioning GNU system made useful by the GNU corelibs, shell utilities and vital system components comprising a full OS as defined by POSIX.          Many computer users run a modified version of the GNU system every day, without realizing it. Through a peculiar turn of events, the version of GNU which is widely used today is often called \"Linux\", and many of its users are not aware that it is basically the GNU system, developed by the GNU Project. There really is a Linux, and these people are using it, but it is just a part of the system they use.          Linux is the kernel: the program in the system that allocates the machine's resources to the other programs that you run. The kernel is an essential part of an operating system, but useless by itself; it can only function in the context of a complete operating system. Linux is normally used in combination with the GNU operating system: the whole system is basically GNU with Linux added, or GNU/Linux. All the so-called \"Linux\" distributions are really distributions of GNU/Linux.";
+	var tdata = createText(text);
+
+	gl.bindBuffer(gl.ARRAY_BUFFER, tdata[0]);
+	gl.vertexAttribPointer(aposition, 3, gl.FLOAT, false, 0, 0);
+	
+	gl.bindBuffer(gl.ARRAY_BUFFER, tdata[1]);
+	gl.vertexAttribPointer(atextureCoord, 2, gl.FLOAT, false, 0, 0);
+
+	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, tdata[2]);
+	
+	var modelmat = mat4.create();
+	var pmat = mat4.create();
+	gl.uniformMatrix4fv(umodelMat, false, new Float32Array(modelmat));
+
+	gl.uniform1i(ustrlen, text.length);
+
+	var viewportchanged = function(nw, nh) {
+		mat4.perspective(pmat, 1.0, nw / nh, 0.1, 10000);
+		gl.uniformMatrix4fv(uprojMat, false, new Float32Array(pmat));
+	};
+
+	var t0 = new Date().getTime();
+
+	var frame = function() {
+		t = new Date().getTime();
+		gl.uniform1f(usecs, (t - t0) / 1000.0);
+		gl.drawElements(gl.TRIANGLES, tdata[3], gl.UNSIGNED_SHORT, 0);
+	};
+
+	animate(gl, canvas, frame, viewportchanged);
+});
+</script>
+</head>
+<body>
+<pre class='shader' id='vs'>
+attribute vec3 position;
+attribute vec2 tc;
+
+uniform mat4 projMat;
+uniform mat4 modelMat;
+uniform mediump float secs;
+uniform int strlen;
+
+varying mediump vec3 vPosition;
+varying mediump vec2 vTextureCoord;
+
+void main(void) {
+	gl_Position = projMat * modelMat * vec4(
+		position.x + 150.0 - mod(50.0 * secs, 6.0 * float(strlen) + 300.0) + cos(secs * 3.0),
+		(position.y - 4.5) * (.5 + 2.0 * cos(position.x + secs * 4.0)) + 20.0 * cos(position.x + secs * 2.0),
+		position.z + 40.0 * cos(position.x + secs * 3.0),
+		1.0);
+	vPosition = position;
+	vTextureCoord = tc;
+}
+</pre>
+<pre class='shader' id='fs'>
+varying mediump vec3 vPosition;	
+varying mediump vec2 vTextureCoord;
+uniform sampler2D texture;
+uniform mediump float secs;
+
+/* Stolen from Sam Hocevar. See:
+ * https://gamedev.stackexchange.com/a/59808 */
+vec3 hsv2rgb(vec3 c) {
+	vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+	vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+	return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+}
+
+void main(void) {
+	vec4 t = texture2D(texture, vTextureCoord);
+	gl_FragColor = vec4(hsv2rgb(vec3(
+		vPosition.x * .01 + vPosition.y * .01 + secs * .5,
+		1.0,
+		1.0
+	)), 1.0 - t.x);
+}
+</pre>
+</body>
+</html>

@@ -134,3 +134,4 @@ animate = function(gl, canvas, frame, onviewportchange) {
 
 	raf(frameandrequestframe);
 };
+
