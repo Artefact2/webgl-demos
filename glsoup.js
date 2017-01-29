@@ -228,6 +228,7 @@ add_menu_entry_range = function(id, opts) {
 		var p = t.parent();
 
 		if(p.data('value') === t.val()) return;
+		if(t.val() === '') return;
 
 		opts.onchange(parseFloat(p.data('value')), parseFloat(t.val()));
 		
