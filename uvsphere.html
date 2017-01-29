@@ -102,14 +102,14 @@ $(function() {
 	var t, t0 = (new Date()).getTime();
 	gl.bindBuffer(gl.ARRAY_BUFFER, vbuffer);
 
-	var rx = -.01;
-	var ry = -.005;
-	var rz = -.0025;
+	var rx = -.001;
+	var ry = -.002;
+	var rz = -.003;
 	var s = .25;
 	var invs = 4.0;
-	var nU = 32;
-	var nV = 32;
-	var breathe1 = 1.0;
+	var nU = 128;
+	var nV = 128;
+	var breathe1 = .2;
 	var breathe2 = 4.0;
 	var breathe1off = 0.0;
 	var breathe2off = Math.PI;
@@ -155,7 +155,7 @@ $(function() {
 
 	add_menu_entry_range("slicesU", {
 		min: 4,
-		max: 256,
+		max: 512,
 		init: nU,
 		log: true,
 		onchange: function(oldv, newv) {
@@ -165,7 +165,7 @@ $(function() {
 	});
 	add_menu_entry_range("slicesV", {
 		min: 4,
-		max: 256,
+		max: 512,
 		init: nV,
 		log: true,
 		onchange: function(oldv, newv) {
