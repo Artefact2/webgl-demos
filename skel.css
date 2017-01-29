@@ -1,24 +1,110 @@
-body, canvas {
-	position: absolute;
+@font-face {
+	font-family: "FSEX300";
+	src: url("FixedsysExcelsiorIIIb.woff");
+}
+
+body {
+	background-color: hsl(210, 80%, 10%);
+	color: hsla(0, 0%, 100%, .8);
+	font-size: 16px;
+}
+
+body, pre, input {
+	font-family: "Fixedsys Excelsior 3.01", "Fixedsys Excelsior 3.00", "FSEX300", monospace;
+}
+
+input {
+	background-color: transparent;
+	border: 0;
+	color: hsla(0, 0%, 100%, .8);
+	margin: 0;
+	padding: 0;
+	font-size: 16px;
+	box-shadow: none;
+}
+
+input:focus {
+	outline: 1px solid hsla(210, 80%, 80%, .8);
+	color: #FFF;
+}
+
+canvas {
+	position: fixed;
 	top: 0;
 	left: 0;
 	width: 100%;
 	height: 100%;
-	margin: 0;
-	padding: 0;
-	color: hsl(0, 0%, 90%);
-}
-
-body {
-	background: hsl(210, 80%, 10%);
 }
 
 pre.shader {
 	display: none;
 }
 
-pre {
-	color: hsl(0, 0%, 90%);
-	padding: 1em;
+ul#shortcuts, ul#menu {
+	position: fixed;
 	margin: 0;
+	padding: 0;
+	opacity: .8;
+}
+
+ul#shortcuts > li, ul#menu > li {
+	list-style-type: none;
+	display: block;
+}
+
+ul#shortcuts {
+	top: 4px;
+	left: 8px;
+}
+
+ul#menu {
+	top: 0px;
+	right: 0px;
+	width: 256px;
+	background-color: hsla(0, 0%, 0%, .5);
+}
+
+ul#menu > li {
+	position: relative;
+	height: 16px;
+	line-height: 16px;
+	margin-bottom: 4px;
+}
+
+ul#menu > li > label {
+	display: block;
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 25%;
+	height: 100%;
+	text-align: right;
+	
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+ul#menu > li > div.payload {
+	position: absolute;
+	left: 25%;
+	width: 75%;
+	top: 0%;
+	height: 100%;
+}
+
+ul#menu > li > div.payload.range > input[type="range"] {
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 50%;
+	height: 100%;
+}
+
+ul#menu > li > div.payload.range > input[type="number"] {
+	position: absolute;
+	left: 50%;
+	top: 0;
+	width: 50%;
+	height: 100%;
 }

@@ -135,3 +135,149 @@ animate = function(gl, canvas, frame, onviewportchange) {
 	raf(frameandrequestframe);
 };
 
+
+
+
+
+menu_entries = {}; /* XXX: put/restore value from window.location.hash */
+
+add_menu_entry_generic = function(id, payload) {
+	var menu = $("ul#menu");
+	if(menu.length === 0) {
+		menu = $(document.createElement('ul'));
+		menu.prop('id', 'menu');
+		$("body").append(menu);
+	}
+
+	if(id in menu_entries) {
+		remove_menu_entry(id);
+	}
+
+	var li = menu_entries[id] = $(document.createElement('li'));
+	li.append($(document.createElement('label')).text(id));
+	li.append(payload);
+	menu.append(li);
+
+	if(Object.keys(menu_entries).length === 1) {
+		add_shortcut("m", "toggle menu", function() {
+			menu.toggle();
+		});
+	}
+};
+
+/* opts: min, max, step, init, onchange(oldval, newval), log? */
+add_menu_entry_range = function(id, opts) {
+	opts.min = opts.min === undefined ? 0 : opts.min;
+	opts.max = opts.max === undefined ? 1 : opts.max;
+	opts.step = opts.step === undefined ? "any" : opts.step;
+	opts.init = opts.init === undefined ? .5 : opts.init;
+	opts.onchange = opts.onchange === undefined ? function() {} : opts.onchange;
+	opts.log = opts.log === undefined ? false : opts.log;
+
+	if(opts.log) {
+		var f = opts.onchange;
+		opts.onchange = function(oldv, newv) {
+			f(Math.exp(oldv), Math.exp(newv));
+		};
+		opts.min = Math.log(opts.min);
+		opts.max = Math.log(opts.max);
+		opts.init = Math.log(opts.init);
+		opts.step = "any";
+	}
+	
+	var payload = $(document.createElement('div')).addClass('payload').addClass('range');
+	var irange = $(document.createElement('input'))
+		.prop('type', 'range')
+		.prop('min', opts.min)
+		.prop('max', opts.max)
+		.prop('step', opts.step)
+		.val(opts.init)
+	;
+	var inumber = $(document.createElement('input'))
+		.prop('type', 'number')
+		.prop('min', opts.min)
+		.prop('max', opts.max)
+		.prop('step', opts.step === "any" ? (opts.max - opts.min) / 1000.0 : opts.step)
+		.val(opts.init)
+	;
+
+	payload.data('value', opts.init);
+	irange.val(opts.init);
+	inumber.val(opts.init);
+
+	payload.on('change input', 'input', function() {
+		var t = $(this);
+		var p = t.parent();
+
+		if(p.data('value') === t.val()) return;
+
+		opts.onchange(parseFloat(p.data('value')), parseFloat(t.val()));
+		
+		p.children('input').val(t.val());
+		p.data('value', t.val());		
+	});
+
+	payload.append(irange, inumber);
+	add_menu_entry_generic(id, payload);
+};
+
+remove_menu_entry = function(id) {
+	if(!(id in menu_entries)) return;
+	menu_entries[id].remove();
+	delete menu_entries[id];
+
+	if(Object.keys(menu_entries).length === 0) {
+		$("ul#menu").hide();
+		remove_shortcut("m");
+	}
+};
+
+
+
+
+shortcuts = {};
+if(typeof(Mousetrap) === 'undefined') Mousetrap = { bind: function() {}, unbind: function() {} };
+
+add_shortcut = function(key, label, callback) {
+	var slist = $("ul#shortcuts");
+	if(slist.length === 0) {
+		slist = $(document.createElement('ul'));
+		slist.prop('id', 'shortcuts');
+		$("body").append(slist);
+		slist.hide();
+	}
+
+	if(key in shortcuts) {
+		remove_shortcut(key);
+	}
+
+	Mousetrap.bind(key, function() {
+		callback();
+		return false;
+	});
+
+	var li = shortcuts[key] = $(document.createElement('li'));
+	li.text(key + ': ' + label);
+	slist.append(li);
+
+	if(Object.keys(shortcuts).length === 2) {
+		slist.show();
+	}
+};
+
+remove_shortcut = function(key) {
+	if(!(key in shortcuts)) return;
+	Mousetrap.unbind(key);
+	shortcuts[key].remove();
+	delete shortcuts[key];
+
+	if(Object.keys(shortcuts).length === 1) {
+		$("ul#shortcuts").hide();
+	}
+};
+
+$(function() {
+	add_shortcut("s", "toggle shortcuts", function() {
+		$("ul#shortcuts").toggle();
+	});
+});

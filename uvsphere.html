@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>UV Sphere</title>
+<meta charset='utf-8' />
+<link type='text/css' href='./skel.css' rel='stylesheet' />
+<script type='application/javascript' src='https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js'></script>
+<script type='application/javascript' src='https://cdn.jsdelivr.net/glmatrix/2.2.0/gl-matrix.js'></script>
+<script type='application/javascript' src='./mousetrap.min.js'></script>
+<script type='application/javascript' src='./glsoup.js'></script>
+<script type='application/javascript'>
+$(function() {
+	var canvas = document.createElement('canvas');
+	var body = $('body');
+	body.append(canvas);
+
+	var gl = create_context(canvas);
+	if(gl === false) return;
+
+	gl.enable(gl.BLEND);
+	gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+	var prog = create_program_vf(gl, $("pre#vs").text(), $("pre#fs").text())[0];
+	gl.useProgram(prog);
+
+	var aposition = gl.getAttribLocation(prog, "position");
+	gl.enableVertexAttribArray(aposition);
+
+	var acposition = gl.getAttribLocation(prog, "cposition");
+	gl.enableVertexAttribArray(acposition);
+
+	var umodelmat = gl.getUniformLocation(prog, "modelmat");
+	var upmat = gl.getUniformLocation(prog, "pmat");
+	var ut = gl.getUniformLocation(prog, "t");
+
+	var squarify = function(x, y, z) {
+		var m = Math.max(Math.abs(x), Math.abs(y), Math.abs(z)) / .806;
+		return [ x / m, y / m, z / m ];
+	};
+
+	var uvsphere = function(nu, nv, straightz) {
+		var points = [ 0.0, 1.0, 0.0, 0.0, -1.0, 0.0 ];
+		var cpoints = [];
+		var npoints = 2;
+
+		var i, j, u, v, x, y, z, r, c;
+
+		--nu;
+		for(i = 1; i < nu; ++i) {
+			u = i / nu;
+			y = (straightz === undefined || !straightz) ?
+				Math.sin(Math.PI / 2.0 - Math.PI * u)
+				: 1.0 - 2.0 * u;
+			r = Math.sqrt(1.0 - y*y);
+
+			for(j = 0; j <= nv; ++j) {
+				v = j / nv;
+				x = r * Math.cos(2.0 * Math.PI * v);
+				z = r * Math.sin(2.0 * Math.PI * v);
+
+				points.push(x, y, z);
+				npoints += 1;
+			}
+		}
+
+		for(i = 0; i < npoints; ++i) {
+			cpoints.push.apply(cpoints, squarify(points[3*i], points[3*i+1], points[3*i+2]));
+		}
+
+		return [ points, cpoints, npoints ];
+	};
+
+	var vbuffer = gl.createBuffer();
+	var vcbuffer = gl.createBuffer();
+
+	gl.bindBuffer(gl.ARRAY_BUFFER, vbuffer);
+	gl.vertexAttribPointer(aposition, 3, gl.FLOAT, false, 0, 0);
+
+	gl.bindBuffer(gl.ARRAY_BUFFER, vcbuffer);
+	gl.vertexAttribPointer(acposition, 3, gl.FLOAT, false, 0, 0);
+	
+	var uvs, glsphere = function(u, v) {
+		uvs = uvsphere(u, v);
+
+		gl.bindBuffer(gl.ARRAY_BUFFER, vbuffer);
+		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(uvs[0]), gl.STATIC_DRAW);
+
+		gl.bindBuffer(gl.ARRAY_BUFFER, vcbuffer);
+		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(uvs[1]), gl.STATIC_DRAW);
+	};
+
+	var modelmat = mat4.create();
+	var pmat = mat4.create();
+
+	mat4.translate(modelmat, modelmat, [ 0.0, 0.0, -3.0 ]);
+
+	var viewportchanged = function(nw, nh) {
+		mat4.perspective(pmat, 1.0, nw / nh, 0.1, 10000);
+		gl.uniformMatrix4fv(upmat, false, new Float32Array(pmat));
+	};
+
+	var t, t0 = (new Date()).getTime();
+	gl.bindBuffer(gl.ARRAY_BUFFER, vbuffer);
+
+	var rx = -.01;
+	var ry = -.005;
+	var rz = -.0025;
+	var s = .25;
+	var invs = 4.0;
+	var nU = 32;
+	var nV = 32;
+	var breathe1 = 1.0;
+	var breathe2 = 4.0;
+	var breathe1off = 0.0;
+	var breathe2off = Math.PI;
+
+	glsphere(nU, nV);
+
+	add_menu_entry_range("rotateX", {
+		min: -.02,
+		max: .02,
+		init: rx,
+		onchange: function(oldv, newv) {
+			rx = newv;
+		},
+	});
+	add_menu_entry_range("rotateY", {
+		min: -.02,
+		max: .02,
+		init: ry,
+		onchange: function(oldv, newv) {
+			ry = newv;
+		},
+	});
+	add_menu_entry_range("rotateZ", {
+		min: -.02,
+		max: .02,
+		init: rz,
+		onchange: function(oldv, newv) {
+			rz = newv;
+		},
+	});
+	
+	add_menu_entry_range("scale", {
+		min: .01,
+		max: 4.0,
+		init: s,
+		log: true,
+		onchange: function(oldv, newv) {
+			if(newv <= 0) return;
+			s = newv;
+			invs = 1 / s;
+		},
+	});
+
+	add_menu_entry_range("slicesU", {
+		min: 4,
+		max: 256,
+		init: nU,
+		log: true,
+		onchange: function(oldv, newv) {
+			nU = newv;
+			glsphere(nU, nV);
+		},
+	});
+	add_menu_entry_range("slicesV", {
+		min: 4,
+		max: 256,
+		init: nV,
+		log: true,
+		onchange: function(oldv, newv) {
+			nV = newv;
+			glsphere(nU, nV);
+		},
+	});
+	
+	add_menu_entry_range("breathe1", {
+		min: 0.0,
+		max: 16.0,
+		init: breathe1,
+		onchange: function(oldv, newv) {
+			breathe1 = newv;
+		},
+	});
+	add_menu_entry_range("breathe2", {
+		min: 0.0,
+		max: 16.0,
+		init: breathe2,
+		onchange: function(oldv, newv) {
+			breathe2 = newv;
+		},
+	});
+	add_menu_entry_range("br1off", {
+		min: 0.0,
+		max: Math.PI,
+		init: breathe1off,
+		onchange: function(oldv, newv) {
+			breathe1off = newv;
+		},
+	});
+	add_menu_entry_range("br2off", {
+		min: 0.0,
+		max: Math.PI,
+		init: breathe2off,
+		onchange: function(oldv, newv) {
+			breathe2off = newv;
+		},
+	});
+						 
+	var frame = function() {
+		t = ((new Date()).getTime() - t0) / 1000.0;
+							
+		mat4.rotateX(modelmat, modelmat, rx);
+		mat4.rotateY(modelmat, modelmat, ry);
+		mat4.rotateZ(modelmat, modelmat, rz);
+		gl.uniformMatrix4fv(umodelmat, false, new Float32Array(modelmat));
+		gl.uniform1f(ut, breathe1 * t + breathe1off);
+		gl.drawArrays(gl.POINTS, 0, uvs[2]);
+
+		mat4.scale(modelmat, modelmat, [ s, s, s ]);
+		gl.uniformMatrix4fv(umodelmat, false, new Float32Array(modelmat));
+		mat4.scale(modelmat, modelmat, [ invs, invs, invs ]);
+		gl.uniform1f(ut, breathe2 * t + breathe2off);
+		gl.drawArrays(gl.POINTS, 0, uvs[2]);
+	};
+
+	animate(gl, canvas, frame, viewportchanged);
+});
+</script>
+</head>
+<body>
+<pre class='shader' id='vs'>
+precision mediump float;
+
+uniform mat4 modelmat;
+uniform mat4 pmat;
+uniform float t;
+
+attribute vec3 position;
+attribute vec3 cposition;
+varying vec3 apos;
+
+void main() {
+	vec3 blend = mix(position, cposition, .5 * (1.0 - cos(t)));
+	/*float breath1 = 1.0 + .1 * sin(2.9 * t) * sin(.1 * t);
+	float breath2 = 1.0 + .1 * cos(3.1 * t) * sin(.07 * t);
+	blend.x *= breath2;
+	blend.y *= breath1;
+	blend.z *= 1.0 / (breath1 * breath2);*/
+	
+	gl_Position = pmat * modelmat * vec4(blend, 1.0);
+	gl_PointSize = 1.0;
+	apos = position;
+}
+</pre>
+<pre class='shader' id='fs'>
+precision mediump float;
+
+void main() {
+	gl_FragColor = vec4(1.0);
+}
+</pre>
+</body>
+</html>
