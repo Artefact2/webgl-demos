@@ -140,6 +140,24 @@ animate = function(gl, canvas, frame, onviewportchange) {
 
 
 menu_entries = {}; /* XXX: put/restore value from window.location.hash */
+menu_hashvals = {};
+
+var parts = window.location.hash.substring(1).split(';');
+for(var i in parts) {
+	var part = parts[i];
+	part = part.split('=');
+	menu_hashvals[part[0]] = parseFloat(part[1]);
+}
+
+menu_update_hash = function() {
+	var vals = [];
+
+	for(var id in menu_entries) {
+		vals.push(id + "=" + menu_entries[id].find('div.payload').data('value'));
+	}
+
+	window.location.hash = "#" + vals.sort().join(';');
+};
 
 add_menu_entry_generic = function(id, payload) {
 	var menu = $("ul#menu");
@@ -214,11 +232,15 @@ add_menu_entry_range = function(id, opts) {
 		opts.onchange(parseFloat(p.data('value')), parseFloat(t.val()));
 		
 		p.children('input').val(t.val());
-		p.data('value', t.val());		
+		p.data('value', t.val());
 	});
 
 	payload.append(irange, inumber);
 	add_menu_entry_generic(id, payload);
+
+	if(id in menu_hashvals) {
+		inumber.val(menu_hashvals[id]).trigger('change');
+	}
 };
 
 remove_menu_entry = function(id) {
@@ -260,7 +282,7 @@ add_shortcut = function(key, label, callback) {
 	li.text(key + ': ' + label);
 	slist.append(li);
 
-	if(Object.keys(shortcuts).length === 2) {
+	if(Object.keys(shortcuts).length === 3) {
 		slist.show();
 	}
 };
@@ -280,4 +302,6 @@ $(function() {
 	add_shortcut("s", "toggle shortcuts", function() {
 		$("ul#shortcuts").toggle();
 	});
+
+	add_shortcut("p", "generate permalink", menu_update_hash);
 });
