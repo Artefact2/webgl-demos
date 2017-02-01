@@ -118,10 +118,14 @@ animate = function(gl, canvas, frame, onviewportchange) {
 	}
 
 	var frameandrequestframe = function() {
-		if(canvas.width != canvas.clientWidth || canvas.height != canvas.clientHeight) {
-			canvas.width = canvas.clientWidth;
-			canvas.height = canvas.clientHeight;
-			gl.viewport(0, 0, canvas.width, canvas.height);
+		var res = canvas.res === undefined ? 1 : canvas.res;
+		var cw = Math.floor(canvas.clientWidth / res);
+		var ch = Math.floor(canvas.clientHeight / res);
+		
+		if(canvas.width !== cw || canvas.height !== ch || canvas.res !== canvas.prevRes) {
+			canvas.width = cw;
+			canvas.height = ch;
+			gl.viewport(0, 0, cw, ch);
 
 			if(typeof onviewportchange === "function") {
 				onviewportchange(canvas.width, canvas.height);
