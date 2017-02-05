@@ -187,7 +187,7 @@ normalize_faces = function(va) {
 		va[i+2] /= 2.0 * m;
 	}
 
-	var j, ret = [], x, y, z, nx, ny, nz, ns;
+	var j, ret = [], u, v, n = vec3.create();
 	var bc = [
 		1.0, 0.0, 0.0,
 		0.0, 1.0, 0.0,
@@ -195,18 +195,15 @@ normalize_faces = function(va) {
 	];
 
 	for(i = 0; i < len; i += 9) {
-		nx = va[i  ] + va[i+3] + va[i+6];
-		ny = va[i+1] + va[i+4] + va[i+7];
-		nz = va[i+2] + va[i+5] + va[i+8];
-		ns = 1.0 / Math.sqrt(nx*nx + ny*ny + nz*nz);
-		nx /= ns;
-		ny /= ns;
-		nz /= ns;
+		u = vec3.fromValues(va[i+3] - va[i], va[i+4] - va[i+1], va[i+5] - va[i+2]);
+		v = vec3.fromValues(va[i+6] - va[i], va[i+7] - va[i+1], va[i+8] - va[i+2]);
+		vec3.cross(n, u, v);
+		vec3.normalize(n, n);
 
 		for(j = 0; j < 9; j += 3) {
 			ret.push(
 				va[i+j], va[i+j+1], va[i+j+2],
-				nx, ny, nz,
+				n[0], n[1], n[2],
 				bc[j], bc[j+1], bc[j+2]
 			);
 		}

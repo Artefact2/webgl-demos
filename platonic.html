@@ -187,6 +187,184 @@ $(function() {
 
 		return [ vb, ve, ne ];
 	};
+
+	/* XXX: move this to glsoup, get rid of element array, use normalize_faces on other primitives */
+	primitive_dodecahedron = function() {
+		var vb = gl.createBuffer();
+		var ve = gl.createBuffer();
+		var ne = 108;
+		var phi = (1.0 + Math.sqrt(5.0)) / 2.0;
+		var iphi = 1.0 / phi;
+		
+		gl.bindBuffer(gl.ARRAY_BUFFER, vb);
+		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normalize_faces([
+			/* ATBJI */
+			1.0, -1.0, -1.0,
+			iphi, 0.0, -phi,
+			1.0, 1.0, -1.0,
+
+			1.0, -1.0, -1.0,
+			1.0, 1.0, -1.0,
+			phi, iphi, 0.0,
+			
+			1.0, -1.0, -1.0,
+			phi, iphi, 0.0,
+			phi, -iphi, 0.0,
+			
+			/* EIJFQ */
+			1.0, -1.0, 1.0,
+			phi, -iphi, 0.0,
+			phi, iphi, 0.0,
+			
+			1.0, -1.0, 1.0,
+			phi, iphi, 0.0,
+			1.0, 1.0, 1.0,
+
+			1.0, -1.0, 1.0,
+			1.0, 1.0, 1.0,
+			iphi, 0.0, phi,
+			
+			/* HRGKL */
+			-1.0, -1.0, 1.0,
+			-iphi, 0.0, phi,
+			-1.0, 1.0, 1.0,
+			
+			-1.0, -1.0, 1.0,
+			-1.0, 1.0, 1.0,
+			-phi, iphi, 0.0,
+			
+			-1.0, -1.0, 1.0,
+			-phi, iphi, 0.0,
+			-phi, -iphi, 0.0,
+
+			/* CSDLK */
+			-1.0, 1.0, -1.0,
+			-iphi, 0.0, -phi,
+			-1.0, -1.0, -1.0,
+			
+			-1.0, 1.0, -1.0,
+			-1.0, -1.0, -1.0,
+			-phi, -iphi, 0.0,
+			
+			-1.0, 1.0, -1.0,
+			-phi, -iphi, 0.0,
+			-phi, iphi, 0.0,
+
+			/* CKGNM */
+			-1.0, 1.0, -1.0,
+			-phi, iphi, 0.0,
+			-1.0, 1.0, 1.0,
+			
+			-1.0, 1.0, -1.0,
+			-1.0, 1.0, 1.0,
+			0.0, phi, iphi,
+			
+			-1.0, 1.0, -1.0,
+			0.0, phi, iphi,
+			0.0, phi, -iphi,
+			
+
+			/* BMNFJ */
+			1.0, 1.0, -1.0,
+			0.0, phi, -iphi,
+			0.0, phi, iphi,
+			
+			1.0, 1.0, -1.0,
+			0.0, phi, iphi,
+			1.0, 1.0, 1.0,
+			
+			1.0, 1.0, -1.0,
+			1.0, 1.0, 1.0,
+			phi, iphi, 0.0,
+
+			/* AIEOP */
+			1.0, -1.0, -1.0,
+			phi, -iphi, 0.0,
+			1.0, -1.0, 1.0,
+			
+			1.0, -1.0, -1.0,
+			1.0, -1.0, 1.0,
+			0.0, -phi, iphi,
+			
+			1.0, -1.0, -1.0,
+			0.0, -phi, iphi,
+			0.0, -phi, -iphi,
+
+			/* DPOHL */
+			-1.0, -1.0, -1.0,
+			0.0, -phi, -iphi,
+			0.0, -phi, iphi,
+			
+			-1.0, -1.0, -1.0,
+			0.0, -phi, iphi,
+			-1.0, -1.0, 1.0,
+			
+			-1.0, -1.0, -1.0,
+			-1.0, -1.0, 1.0,
+			-phi, -iphi, 0.0,
+
+			/* FNGRQ */
+			1.0, 1.0, 1.0,
+			0.0, phi, iphi,
+			-1.0, 1.0, 1.0,
+			
+			1.0, 1.0, 1.0,
+			-1.0, 1.0, 1.0,
+			-iphi, 0.0, phi,
+			
+			1.0, 1.0, 1.0,
+			-iphi, 0.0, phi,
+			iphi, 0, phi,
+			
+
+			/* EQRHO */
+			1.0, -1.0, 1.0,
+			iphi, 0, phi,
+			-iphi, 0.0, phi,
+			
+			1.0, -1.0, 1.0,
+			-iphi, 0.0, phi,
+			-1.0, -1.0, 1.0,
+			
+			1.0, -1.0, 1.0,
+			-1.0, -1.0, 1.0,
+			0.0, -phi, iphi,
+
+			/* APDST */
+			1.0, -1.0, -1.0,
+			0.0, -phi, -iphi,
+			-1.0, -1.0, -1.0,
+			
+			1.0, -1.0, -1.0,
+			-1.0, -1.0, -1.0,
+			-iphi, 0.0, -phi,
+			
+			1.0, -1.0, -1.0,
+			-iphi, 0.0, -phi,
+			iphi, 0.0, -phi,
+
+			/* BTSCM */
+			1.0, 1.0, -1.0,
+			iphi, 0.0, -phi,
+			-iphi, 0.0, -phi,
+			
+			1.0, 1.0, -1.0,
+			-iphi, 0.0, -phi,
+			-1.0, 1.0, -1.0,
+			
+			1.0, 1.0, -1.0,
+			-1.0, 1.0, -1.0,
+			0.0, phi, -iphi,
+		])), gl.STATIC_DRAW);
+
+		var elements = [];
+		for(i = 0; i < 108; ++i) elements.push(i);
+
+		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ve);
+		gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint8Array(elements), gl.STATIC_DRAW);
+
+		return [ vb, ve, ne ];
+	};
 	
 	primitive_icosahedron = function() {
 		var vb = gl.createBuffer();
@@ -317,6 +495,7 @@ $(function() {
 	prims.push(primitive_tetrahedron());
 	prims.push(primitive_cube());
 	prims.push(primitive_octahedron());
+	prims.push(primitive_dodecahedron());
 	prims.push(primitive_icosahedron());
 	var np = prims.length;
 
