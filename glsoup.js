@@ -178,7 +178,7 @@ normalize_faces = function(va) {
 		va[i+1] -= sY;
 		va[i+2] -= sZ;
 
-		m = Math.max(m, Math.abs(va[i]), Math.abs(va[i+1]), Math.abs(va[i+2]));
+		m = Math.max(m, vec3.length(vec3.fromValues(va[i], va[i+1], va[i+2])));
 	}
 
 	for(i = 0; i < len; i += 3) {
