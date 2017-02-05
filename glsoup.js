@@ -150,6 +150,75 @@ animate = function(gl, canvas, frame, onviewportchange) {
 
 
 
+/* Process and normalize a set of given triangle coordinates:
+ *
+ * Center object around origin;
+ * Normalize points in bounding sphere of diameter 1;
+ * Add normal coordinates and barycentric coordinates. */
+normalize_faces = function(va) {
+	var i, len = va.length;
+	if(len === 0) return [];
+
+	var sX = 0, sY = 0, sZ = 0;
+
+	for(i = 0; i < len; i += 3) {
+		sX += va[i];
+		sY += va[i+1];
+		sZ += va[i+2];
+	}
+
+	sX *= 3 / i;
+	sY *= 3 / i;
+	sZ *= 3 / i;
+
+	var m = 0;
+
+	for(i = 0; i < len; i += 3) {
+		va[i] -= sX;
+		va[i+1] -= sY;
+		va[i+2] -= sZ;
+
+		m = Math.max(m, Math.abs(va[i]), Math.abs(va[i+1]), Math.abs(va[i+2]));
+	}
+
+	for(i = 0; i < len; i += 3) {
+		va[i]   /= 2.0 * m;
+		va[i+1] /= 2.0 * m;
+		va[i+2] /= 2.0 * m;
+	}
+
+	var j, ret = [], x, y, z, nx, ny, nz, ns;
+	var bc = [
+		1.0, 0.0, 0.0,
+		0.0, 1.0, 0.0,
+		0.0, 0.0, 1.0,
+	];
+
+	for(i = 0; i < len; i += 9) {
+		nx = va[i  ] + va[i+3] + va[i+6];
+		ny = va[i+1] + va[i+4] + va[i+7];
+		nz = va[i+2] + va[i+5] + va[i+8];
+		ns = 1.0 / Math.sqrt(nx*nx + ny*ny + nz*nz);
+		nx /= ns;
+		ny /= ns;
+		nz /= ns;
+
+		for(j = 0; j < 9; j += 3) {
+			ret.push(
+				va[i+j], va[i+j+1], va[i+j+2],
+				nx, ny, nz,
+				bc[j], bc[j+1], bc[j+2]
+			);
+		}
+	}
+	
+	return ret;
+};
+
+
+
+
+
 menu_entries = {}; /* XXX: put/restore value from window.location.hash */
 menu_hashvals = {};
 
