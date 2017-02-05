@@ -150,14 +150,30 @@ animate = function(gl, canvas, frame, onviewportchange) {
 
 
 
+/* Add default properties to an object if not present. */
+object_defaults = function(obj, defaults) {
+	for(var k in defaults) {
+		if(k in obj && obj[k] !== undefined) continue;
+		obj[k] = defaults[k];
+	}
+};
+
+
+
+
+
 /* Process and normalize a set of given triangle coordinates:
  *
  * Center object around origin;
  * Normalize points in bounding sphere of diameter 1;
  * Add normal coordinates and barycentric coordinates. */
-normalize_faces = function(va) {
+normalize_faces = function(va, opts) {	
 	var i, len = va.length;
 	if(len === 0) return [];
+
+	object_defaults(opts, {
+		tpf: 1, /* Triangles per face */
+	});
 
 	var sX = 0, sY = 0, sZ = 0;
 
@@ -187,7 +203,7 @@ normalize_faces = function(va) {
 		va[i+2] /= 2.0 * m;
 	}
 
-	var j, ret = [], u, v, n = vec3.create();
+	var j, ret = [], u, v, n = vec3.create(), fn;
 	var bc = [
 		1.0, 0.0, 0.0,
 		0.0, 1.0, 0.0,
@@ -199,17 +215,419 @@ normalize_faces = function(va) {
 		v = vec3.fromValues(va[i+6] - va[i], va[i+7] - va[i+1], va[i+8] - va[i+2]);
 		vec3.cross(n, u, v);
 		vec3.normalize(n, n);
+		fn = Math.floor(i / (9.0 * opts.tpf));
 
 		for(j = 0; j < 9; j += 3) {
 			ret.push(
 				va[i+j], va[i+j+1], va[i+j+2],
 				n[0], n[1], n[2],
-				bc[j], bc[j+1], bc[j+2]
+				bc[j], bc[j+1], bc[j+2],
+				fn,
+				0.0, 0.0, 0.0, 0.0, 0.0, 0.0
 			);
 		}
 	}
 	
 	return ret;
+};
+
+
+
+
+
+/* Generate a regular tetrahedron. */
+primitive_tetrahedron = function(gl) {
+	var vb = gl.createBuffer();
+	
+	gl.bindBuffer(gl.ARRAY_BUFFER, vb);
+	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normalize_faces([
+		/* ACB */
+		-0.5, 0.5, 0.5,
+		0.5, -0.5, 0.5,
+		0.5, 0.5, -0.5,
+		/* ABD */
+		-0.5, 0.5, 0.5,
+		0.5, 0.5, -0.5,
+		-0.5, -0.5, -0.5,
+		/* ADC */
+		-0.5, 0.5, 0.5,
+		-0.5, -0.5, -0.5,
+		0.5, -0.5, 0.5,
+		/* BCD */
+		0.5, 0.5, -0.5,
+		0.5, -0.5, 0.5,
+		-0.5, -0.5, -0.5,
+	], {})), gl.STATIC_DRAW);
+
+	return [ vb, 12 ];
+};
+
+/* Generate a regular cube. */
+primitive_cube = function(gl) {
+	var vb = gl.createBuffer();
+	
+	gl.bindBuffer(gl.ARRAY_BUFFER, vb);
+	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normalize_faces([
+		/* ABFE */
+		-0.5, -0.5, 0.5,
+		0.5, -0.5, 0.5,
+		0.5, 0.5, 0.5,
+		
+		-0.5, -0.5, 0.5,
+		0.5, 0.5, 0.5,
+		-0.5, 0.5, 0.5,
+		
+		/* CDHG */
+		0.5, -0.5, -0.5,
+		-0.5, -0.5, -0.5,
+		-0.5, 0.5, -0.5,
+		
+		0.5, -0.5, -0.5,
+		-0.5, 0.5, -0.5,
+		0.5, 0.5, -0.5,
+		
+		/* DCBA */
+		-0.5, -0.5, -0.5,
+		0.5, -0.5, -0.5,
+		0.5, -0.5, 0.5,
+		
+		-0.5, -0.5, -0.5,
+		0.5, -0.5, 0.5,
+		-0.5, -0.5, 0.5,
+		
+		/* EFGH */
+		-0.5, 0.5, 0.5,
+		0.5, 0.5, 0.5,
+		0.5, 0.5, -0.5,
+		
+		-0.5, 0.5, 0.5,
+		0.5, 0.5, -0.5,
+		-0.5, 0.5, -0.5,
+		
+		/* BCGF */
+		0.5, -0.5, 0.5,
+		0.5, -0.5, -0.5,
+		0.5, 0.5, -0.5,
+		
+		0.5, -0.5, 0.5,
+		0.5, 0.5, -0.5,
+		0.5, 0.5, 0.5,
+		
+		/* DAEH */
+		-0.5, -0.5, -0.5,
+		-0.5, -0.5, 0.5,
+		-0.5, 0.5, 0.5,
+		
+		-0.5, -0.5, -0.5,
+		-0.5, 0.5, 0.5,
+		-0.5, 0.5, -0.5,
+		
+	], { tpf: 2 })), gl.STATIC_DRAW);
+
+	return [ vb, 36 ];
+};
+
+/* Generate a regular octahedron. */
+primitive_octahedron = function(gl) {
+	var vb = gl.createBuffer();
+	
+	gl.bindBuffer(gl.ARRAY_BUFFER, vb);
+	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normalize_faces([
+		/* ABE */
+		-0.5, 0.0, 0.0,
+		0.0, -0.5, 0.0,
+		0.0, 0.0, 0.5,
+		/* BCE */
+		0.0, -0.5, 0.0,
+		0.5, 0.0, 0.0,
+		0.0, 0.0, 0.5,
+		/* CDE */
+		0.5, 0.0, 0.0,
+		0.0, 0.5, 0.0,
+		0.0, 0.0, 0.5,
+		/* DAE */
+		0.0, 0.5, 0.0,
+		-0.5, 0.0, 0.0,
+		0.0, 0.0, 0.5,
+		/* BFC */
+		0.0, -0.5, 0.0,
+		0.0, 0.0, -0.5,
+		0.5, 0.0, 0.0,
+		/* CFD */
+		0.5, 0.0, 0.0,
+		0.0, 0.0, -0.5,
+		0.0, 0.5, 0.0,
+		/* DFA */
+		0.0, 0.5, 0.0,
+		0.0, 0.0, -0.5,
+		-0.5, 0.0, 0.0,
+		/* AFB */
+		-0.5, 0.0, 0.0,
+		0.0, 0.0, -0.5,
+		0.0, -0.5, 0.0,
+	], {})), gl.STATIC_DRAW);
+
+	return [ vb, 24 ];
+};
+
+/* Generate a regular dodecahedron. */
+primitive_dodecahedron = function(gl) {
+	var vb = gl.createBuffer();
+	var phi = (1.0 + Math.sqrt(5.0)) / 2.0;
+	var iphi = 1.0 / phi;
+	
+	gl.bindBuffer(gl.ARRAY_BUFFER, vb);
+	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normalize_faces([
+		/* EQRHO */
+		1.0, -1.0, 1.0,
+		iphi, 0, phi,
+		-iphi, 0.0, phi,
+		
+		1.0, -1.0, 1.0,
+		-iphi, 0.0, phi,
+		-1.0, -1.0, 1.0,
+		
+		1.0, -1.0, 1.0,
+		-1.0, -1.0, 1.0,
+		0.0, -phi, iphi,
+
+		/* BTSCM */
+		1.0, 1.0, -1.0,
+		iphi, 0.0, -phi,
+		-iphi, 0.0, -phi,
+		
+		1.0, 1.0, -1.0,
+		-iphi, 0.0, -phi,
+		-1.0, 1.0, -1.0,
+		
+		1.0, 1.0, -1.0,
+		-1.0, 1.0, -1.0,
+		0.0, phi, -iphi,
+
+		/* CKGNM */
+		-1.0, 1.0, -1.0,
+		-phi, iphi, 0.0,
+		-1.0, 1.0, 1.0,
+		
+		-1.0, 1.0, -1.0,
+		-1.0, 1.0, 1.0,
+		0.0, phi, iphi,
+		
+		-1.0, 1.0, -1.0,
+		0.0, phi, iphi,
+		0.0, phi, -iphi,
+
+		/* FNGRQ */
+		1.0, 1.0, 1.0,
+		0.0, phi, iphi,
+		-1.0, 1.0, 1.0,
+		
+		1.0, 1.0, 1.0,
+		-1.0, 1.0, 1.0,
+		-iphi, 0.0, phi,
+		
+		1.0, 1.0, 1.0,
+		-iphi, 0.0, phi,
+		iphi, 0, phi,
+		
+		/* BMNFJ */
+		1.0, 1.0, -1.0,
+		0.0, phi, -iphi,
+		0.0, phi, iphi,
+		
+		1.0, 1.0, -1.0,
+		0.0, phi, iphi,
+		1.0, 1.0, 1.0,
+		
+		1.0, 1.0, -1.0,
+		1.0, 1.0, 1.0,
+		phi, iphi, 0.0,
+		
+		/* EIJFQ */
+		1.0, -1.0, 1.0,
+		phi, -iphi, 0.0,
+		phi, iphi, 0.0,
+		
+		1.0, -1.0, 1.0,
+		phi, iphi, 0.0,
+		1.0, 1.0, 1.0,
+
+		1.0, -1.0, 1.0,
+		1.0, 1.0, 1.0,
+		iphi, 0.0, phi,
+		
+		/* ATBJI */
+		1.0, -1.0, -1.0,
+		iphi, 0.0, -phi,
+		1.0, 1.0, -1.0,
+
+		1.0, -1.0, -1.0,
+		1.0, 1.0, -1.0,
+		phi, iphi, 0.0,
+		
+		1.0, -1.0, -1.0,
+		phi, iphi, 0.0,
+		phi, -iphi, 0.0,
+
+		/* AIEOP */
+		1.0, -1.0, -1.0,
+		phi, -iphi, 0.0,
+		1.0, -1.0, 1.0,
+		
+		1.0, -1.0, -1.0,
+		1.0, -1.0, 1.0,
+		0.0, -phi, iphi,
+		
+		1.0, -1.0, -1.0,
+		0.0, -phi, iphi,
+		0.0, -phi, -iphi,
+
+		/* APDST */
+		1.0, -1.0, -1.0,
+		0.0, -phi, -iphi,
+		-1.0, -1.0, -1.0,
+		
+		1.0, -1.0, -1.0,
+		-1.0, -1.0, -1.0,
+		-iphi, 0.0, -phi,
+		
+		1.0, -1.0, -1.0,
+		-iphi, 0.0, -phi,
+		iphi, 0.0, -phi,
+
+		/* DPOHL */
+		-1.0, -1.0, -1.0,
+		0.0, -phi, -iphi,
+		0.0, -phi, iphi,
+		
+		-1.0, -1.0, -1.0,
+		0.0, -phi, iphi,
+		-1.0, -1.0, 1.0,
+		
+		-1.0, -1.0, -1.0,
+		-1.0, -1.0, 1.0,
+		-phi, -iphi, 0.0,
+
+		/* CSDLK */
+		-1.0, 1.0, -1.0,
+		-iphi, 0.0, -phi,
+		-1.0, -1.0, -1.0,
+		
+		-1.0, 1.0, -1.0,
+		-1.0, -1.0, -1.0,
+		-phi, -iphi, 0.0,
+		
+		-1.0, 1.0, -1.0,
+		-phi, -iphi, 0.0,
+		-phi, iphi, 0.0,
+		
+		/* HRGKL */
+		-1.0, -1.0, 1.0,
+		-iphi, 0.0, phi,
+		-1.0, 1.0, 1.0,
+		
+		-1.0, -1.0, 1.0,
+		-1.0, 1.0, 1.0,
+		-phi, iphi, 0.0,
+		
+		-1.0, -1.0, 1.0,
+		-phi, iphi, 0.0,
+		-phi, -iphi, 0.0,
+	], { tpf: 3 })), gl.STATIC_DRAW);
+
+	return [ vb, 108 ];
+};
+
+/* Generate a regular icosahedron. */
+primitive_icosahedron = function(gl) {
+	var vb = gl.createBuffer();
+	var phi = (1 + Math.sqrt(3)) / 4;
+	
+	gl.bindBuffer(gl.ARRAY_BUFFER, vb);
+	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normalize_faces([
+		/* ABE */
+		-0.5, 0.0, phi,
+		0.5, 0.0, phi,
+		0.0, phi, 0.5,
+		/* EFL */
+		0.0, phi, 0.5,
+		0.0, phi, -0.5,
+		-phi, 0.5, 0.0,
+		/* AHB */
+		-0.5, 0.0, phi,
+		0.0, -phi, 0.5,
+		0.5, 0.0, phi,
+		/* EIF */
+		0.0, phi, 0.5,
+		phi, 0.5, 0.0,
+		0.0, phi, -0.5,
+		/* KAL */
+		-phi, -0.5, 0.0,
+		-0.5, 0.0, phi,
+		-phi, 0.5, 0.0,
+		/* BIE */
+		0.5, 0.0, phi,
+		phi, 0.5, 0.0,
+		0.0, phi, 0.5,
+		/* AEL */
+		-0.5, 0.0, phi,
+		0.0, phi, 0.5,
+		-phi, 0.5, 0.0,
+		/* GHK */
+		0.0, -phi, -0.5,
+		0.0, -phi, 0.5,
+		-phi, -0.5, 0.0,
+		/* AKH */
+		-0.5, 0.0, phi,
+		-phi, -0.5, 0.0,
+		0.0, -phi, 0.5,
+		/* KLD */
+		-phi, -0.5, 0.0,
+		-phi, 0.5, 0.0,
+		-0.5, 0.0, -phi,
+		/* CJG */
+		0.5, 0.0, -phi,
+		phi, -0.5, 0.0,
+		0.0, -phi, -0.5,
+		/* IBJ */
+		phi, 0.5, 0.0,
+		0.5, 0.0, phi,
+		phi, -0.5, 0.0,
+		/* CFI */
+		0.5, 0.0, -phi,
+		0.0, phi, -0.5,
+		phi, 0.5, 0.0,
+		/* DLF */
+		-0.5, 0.0, -phi,
+		-phi, 0.5, 0.0,
+		0.0, phi, -0.5,
+		/* CGD */
+		0.5, 0.0, -phi,
+		0.0, -phi, -0.5,
+		-0.5, 0.0, -phi,
+		/* BHJ */
+		0.5, 0.0, phi,
+		0.0, -phi, 0.5,
+		phi, -0.5, 0.0,
+		/* CDF */
+		0.5, 0.0, -phi,
+		-0.5, 0.0, -phi,
+		0.0, phi, -0.5,
+		/* GJH */
+		0.0, -phi, -0.5,
+		phi, -0.5, 0.0,
+		0.0, -phi, 0.5,
+		/* IJC */
+		phi, 0.5, 0.0,
+		phi, -0.5, 0.0,
+		0.5, 0.0, -phi,
+		/* DGK */
+		-0.5, 0.0, -phi,
+		0.0, -phi, -0.5,
+		-phi, -0.5, 0.0,
+	], {})), gl.STATIC_DRAW);
+
+	return [ vb, 60 ];
 };
 
 
@@ -262,12 +680,14 @@ add_menu_entry_generic = function(id, payload) {
 
 /* opts: min, max, step, init, onchange(oldval, newval), log? */
 add_menu_entry_range = function(id, opts) {
-	opts.min = opts.min === undefined ? 0 : opts.min;
-	opts.max = opts.max === undefined ? 1 : opts.max;
-	opts.step = opts.step === undefined ? "any" : opts.step;
-	opts.init = opts.init === undefined ? .5 : opts.init;
-	opts.onchange = opts.onchange === undefined ? function() {} : opts.onchange;
-	opts.log = opts.log === undefined ? false : opts.log;
+	object_defaults(opts, {
+		min: 0,
+		max: 1,
+		step: "any",
+		init: .5,
+		onchange: function() {},
+		log: false,
+	});
 
 	if(opts.log) {
 		var f = opts.onchange;
