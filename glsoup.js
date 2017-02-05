@@ -117,6 +117,13 @@ animate = function(gl, canvas, frame, onviewportchange) {
 		};
 	}
 
+	if(typeof onviewportchange === "function") {
+		$(canvas).on('viewportchange', function() {
+			var t = $(this)[0];
+			onviewportchange(t.width, t.height);
+		});
+	}
+
 	var frameandrequestframe = function() {
 		var res = canvas.res === undefined ? 1 : canvas.res;
 		var cw = Math.floor(canvas.clientWidth / res);

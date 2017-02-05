@@ -90,6 +90,9 @@ ul#menu > li > label {
 	overflow: hidden;
 	white-space: nowrap;
 	text-overflow: ellipsis;
+
+	box-sizing: border-box;
+	padding-right: 2px;
 }
 
 ul#menu > li > div.payload {
