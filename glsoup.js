@@ -25,7 +25,10 @@
  * @returns false or a WebGL context.
  */
 create_context = function(canvas) {
-	var gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+	var opts = {};
+	if($('body').hasClass('bl')) opts.alpha = false;
+	
+	var gl = canvas.getContext('webgl', opts) || canvas.getContext('experimental-webgl', opts);
 
 	if(!gl) {
 		console.log('WebGL unavailable.');

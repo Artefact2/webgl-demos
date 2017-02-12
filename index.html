@@ -1,18 +1,114 @@
 <!DOCTYPE html>
 <html>
-<head>
-<title>WebGL demos</title>
-<meta charset='utf-8' />
-</head>
-<body>
-<h1>WebGL demos</h1>
-<ul>
-<li><a href='./cube-fog.html'>cube-fog</a></li>
-<li><a href='./cube-points.html'>cube-points</a></li>
-<li><a href='./overdrive.html'>overdrive</a></li>
-<li><a href='./scroller.html'>scroller</a></li>
-<li><a href='./tvnoise.html'>tvnoise</a></li>
-<li><a href='./uvsphere.html'>uvsphere</a></li>
-</ul>
-</body>
+	<head>
+		<title>Artefact2's WebGL demos</title>
+		<meta charset='utf-8' />
+		<link rel='stylesheet' href='skel.css' />
+	</head>
+	<body class='wh'>
+		<h1><span>A</span><span>r</span><span>t</span><span>e</span><span>f</span><span>a</span><span>c</span><span>t</span><span>2</span><span>'</span><span>s</span><span> </span><span>W</span><span>e</span><span>b</span><span>G</span><span>L</span><span> </span><span>d</span><span>e</span><span>m</span><span>o</span><span>s</span></h1>
+		<p>I find oldschool demos fascinating. I want to recreate some
+			of the most interesting effects using WebGL. One of my
+			long term goals is to eventually produce my own demo.</p>
+		<p>Watch these lame attempts at me trying to dabble in core
+			OpenGL/WebGL concepts to recreate famous demo effects.</p>
+		<p>Some useful
+			links: <a href='https://github.com/Artefact2/webgl-demos/'>source
+			code</a> and my <a href='https://artefact2.com/'>personal
+			website</a>.</p>
+		<ul id='dl'>
+			<li>
+				<h6><a href='./panic.html'><img src='./img/panic.png' alt='' /><span>Panic!</span></a></h6>
+				<p>My attempt to
+				recreate <a href='https://youtu.be/dh6N3QylX0s?list=LLIwnq09cDSoBJwHkXs9ueuQ&t=138'>this
+				scene</a> from "Panic" by Future Crew
+				(<a href='http://www.pouet.net/prod.php?which=479'>pouet</a>).</p>
+				<p>Who would have thought something as simple as
+				trails would require off-screen rendering? So yeah, in
+				this demo I deal with framebuffers, textures and,
+				surprisingly for the first time, multiple shader
+				programs.</p>
+				<footer>Created: 2017-02-11 (still a WIP).</footer>
+			</li>
+			<li>
+				<h6><a href='./platonic.html'><img src='./img/platonic.png' alt='' /><span>Platonic Solids</span></a></h6>
+				<p>I finally got around to implement the ubiquitous
+					primitives found in every good demo. Doing the
+					math was the most annoying thing, so was inputting
+					everything by hand in the right order.</p>
+				<p>First time I had to really deal with lighting,
+					normals, face culling, etc. Interesting stuff. I
+					also have numbered the faces so I can do per-face
+					color/texture.</p>
+				<p>Fun fact: the goal was, originally, to
+					recreate <a href='https://youtu.be/rFv7mHTf0nA?t=129'>this
+					scene</a> from "Second reality" by Future Crew
+					(<a href='http://www.pouet.net/prod.php?which=63'>pouet</a>). I
+					decided to implement all the primitives for the
+					five solids, only to realise after the fact the
+					spinning solid in this scene isn't even one of
+					them. I think it is
+					a <a href='https://en.wikipedia.org/wiki/Tetrakis_hexahedron'>tetrakis
+					hexahedron</a>, but I am not sure.</p>
+				<footer>Created: 2017-02-05.</footer>
+			</li>
+			<li>
+				<h6><a href='./uvsphere.html'><img src='./img/uvsphere.png' alt='' /><span>UV Sphere</span></a></h6>
+				<p>Not exactly sure where I got the inspiration for
+					this monstrosity. Anyway, I finally got around to
+					add proper slider so you can tweak with some
+					values in real time (including geometry).</p>
+				<footer>Created: 2017-01-29.</footer>
+			</li>
+			<li>
+				<h6><a href='./scroller.html'><img src='./img/scroller.png' alt='' /><span>Scroller (Interject)</span></a></h6>
+				<p>Have you ever been "interjected for a moment" with
+					style? This demo was challenging for a couple of
+					reasons. I had to create a bitmap font, embed it
+					in the source code then dynamically generate the
+					text geometry at runtime. The text also loops.</p>
+				<footer>Created: 2017-01-21.</footer>
+			</li>
+			<li>
+				<h6><a href='./cube-points.html'><img src='./img/cube-points.png' alt='' /><span>RGB Cube</span></a></h6>
+				<p>I got inspired
+					by <a href='https://youtu.be/gKNvLyxHTmg?t=64'>this</a>
+					scene of "Pirates of the 777 seas", by Razor 1911
+					(<a href='http://www.pouet.net/prod.php?which=56549'>pouet</a>). I
+					liked the Moiré-like patterns as the cube rotates,
+					so I left it as is.</p>
+				<footer>Created: 2014-10-21.</footer>
+			</li>
+			<li>
+				<h6><a href='./tvnoise.html'><img src='./img/tvnoise.png' alt='' /><span>TV Noise</span></a></h6>
+				<p>It's white noise. What else were you expecting? May
+					come in handy if your LCD panel has dead
+					pixels.</p>
+				<footer>Created: 2014-01-04.</footer>
+			</li>
+			<li>
+				<h6><a href='./overdrive.html'><img src='./img/overdrive.png' alt='' /><span>Overdrive</span></a></h6>
+				<p>Original inspiration came from
+					the <a href='https://youtu.be/sQNcIKAIBF0?t=240'>Overdrive</a>
+					demo by Titan
+					(<a href='http://www.pouet.net/prod.php?which=61724'>pouet</a>). As
+					I tried to recreate this scene it eventually
+					evolved in something else.</p>
+				<footer>Created: 2013-12-18.</footer>
+			</li>
+			<li>
+				<h6><a href='./cube-fog.html'><img src='./img/cube-fog.png' alt='' /><span>Fogged Cube</span></a></h6>
+				<p>My very first demo. The goal was to do recreate
+					something
+					like <a href='https://youtu.be/0CBQI7cktMk?t=68'>this
+					scene</a> of "We have accidentally borrowed your
+					votedisk" by Razor1911
+					(<a href='http://www.pouet.net/prod.php?which=56871'>pouet</a>). However
+					after realising the amount of work needed I was
+					very happy to have anything rendered at all.</p>
+				<p>Skip this one, it's really boring.</p>
+				<footer>Created: 2013-12-15.</footer>
+			</li>
+		</ul>
+	</body>
 </html>

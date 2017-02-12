@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Panic!</title>
+<meta charset='utf-8' />
+<link type='text/css' href='./skel.css' rel='stylesheet' />
+<script type='application/javascript' src='https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js'></script>
+<script type='application/javascript' src='https://cdn.jsdelivr.net/glmatrix/2.2.0/gl-matrix.js'></script>
+<script type='application/javascript' src='./mousetrap.min.js'></script>
+<script type='application/javascript' src='./glsoup.js'></script>
+<script type='application/javascript'>
+$(function() {
+	var canvas = document.createElement('canvas');
+	var body = $('body');
+	body.append(canvas);
+
+	/* XXX: dots, "morph" effects */
+	
+	var gl = create_context(canvas);
+	if(gl === false) return;
+
+	var ext = gl.getExtension('OES_texture_float');
+
+	gl.enable(gl.BLEND);
+	gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+	var fb = gl.createFramebuffer();
+	var textures = [ gl.createTexture(), gl.createTexture() ];
+	for(var i in textures) {
+		gl.bindTexture(gl.TEXTURE_2D, textures[i]);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+	}
+
+	var progq = create_program_vf(gl, $("pre#vsq").text(), $("pre#fsq").text())[0];
+	gl.useProgram(progq);
+
+	var apositionq = gl.getAttribLocation(progq, "position");
+	gl.enableVertexAttribArray(apositionq);
+	
+	var usmp = gl.getUniformLocation(progq, "smp");
+	var ufade = gl.getUniformLocation(progq, "fade");
+
+	var prog = create_program_vf(gl, $("pre#vsc").text(), $("pre#fsc").text())[0];
+	gl.useProgram(prog);
+
+	var aposition = gl.getAttribLocation(prog, "position");
+	gl.enableVertexAttribArray(aposition);
+
+	var umodelmat = gl.getUniformLocation(prog, "modelmat");
+	var upmat = gl.getUniformLocation(prog, "pmat");
+	var ut = gl.getUniformLocation(prog, "t");
+
+	var q = quat.create();
+	var modelmat = mat4.create();
+	var pmat = mat4.create();
+
+	var qbuf = gl.createBuffer();
+	gl.bindBuffer(gl.ARRAY_BUFFER, qbuf);
+	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+		-1.0, -1.0,
+		1.0, -1.0,
+		1.0, 1.0,
+		-1.0, -1.0,
+		1.0, 1.0,
+		-1.0, 1.0,
+	]), gl.STATIC_DRAW);
+
+	var cbuf = gl.createBuffer();
+	gl.bindBuffer(gl.ARRAY_BUFFER, cbuf);
+	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+		-1.0, -1.0, -1.0,
+		-1.0, -1.0, 1.0,
+		-1.0, -1.0, -1.0,
+		-1.0, 1.0, -1.0,
+		-1.0, 1.0, 1.0,
+		-1.0, 1.0, -1.0,
+		-1.0, 1.0, 1.0,
+		-1.0, -1.0, 1.0,
+		
+		1.0, -1.0, -1.0,
+		1.0, -1.0, 1.0,
+		1.0, -1.0, -1.0,
+		1.0, 1.0, -1.0,
+		1.0, 1.0, 1.0,
+		1.0, 1.0, -1.0,
+		1.0, 1.0, 1.0,
+		1.0, -1.0, 1.0,
+
+		1.0, 1.0, 1.0,
+		-1.0, 1.0, 1.0,
+		1.0, 1.0, -1.0,
+		-1.0, 1.0, -1.0,
+		1.0, -1.0, 1.0,
+		-1.0, -1.0, 1.0,
+		1.0, -1.0, -1.0,
+		-1.0, -1.0, -1.0,
+		
+	]), gl.STATIC_DRAW);
+
+	var viewportchanged = function(nw, nh) {
+		gl.useProgram(prog);
+		mat4.perspective(pmat, .3, nw / nh, 0.1, 10000);
+		gl.uniformMatrix4fv(upmat, false, new Float32Array(pmat));
+		
+		for(var i in textures) {
+			gl.bindTexture(gl.TEXTURE_2D, textures[i]);		
+			gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, nw, nh, 0, gl.RGBA, gl.FLOAT, null);
+		}
+	};
+
+	var t = 0, f = 0;
+	var fade = .05;
+	var dt = 1 / 60.0;
+	
+	add_menu_entry_range("fade", {
+		min: .001,
+		max: 1.0,
+		init: fade,
+		log: true,
+		onchange: function(oldv, newv) {
+			fade = newv;
+		},
+	});
+	
+	add_menu_entry_range("dt", {
+		min: dt / 8.0,
+		max: 2.0 * dt,
+		init: dt,
+		log: true,
+		onchange: function(oldv, newv) {
+			dt = newv;
+		},
+	});
+
+	var frame = function() {
+		gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+		gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, textures[f % 2], 0);
+		gl.clear(gl.COLOR_BUFFER_BIT);
+		
+		gl.useProgram(progq);
+		gl.uniform1i(usmp, 0);
+		gl.uniform1f(ufade, fade);
+		gl.activeTexture(gl.TEXTURE0);
+		gl.bindTexture(gl.TEXTURE_2D, textures[(f+1) % 2]);
+		gl.bindBuffer(gl.ARRAY_BUFFER, qbuf);
+		gl.vertexAttribPointer(apositionq, 2, gl.FLOAT, false, 0, 0);
+		gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+		gl.useProgram(prog);
+		gl.uniform1f(ut, t);
+		mat4.fromRotationTranslation(modelmat, q, [
+			3.0 * Math.sin(t),
+			0.0,
+			-20.0 + 3.0 * Math.sin(2.1 * t) - Math.exp(-3.0 * t + 10.0),
+		]);
+		gl.uniformMatrix4fv(umodelmat, false, new Float32Array(modelmat));
+		
+		gl.bindBuffer(gl.ARRAY_BUFFER, cbuf);
+		gl.vertexAttribPointer(aposition, 3, gl.FLOAT, false, 0, 0);
+		gl.drawArrays(gl.LINES, 0, 24);
+
+		quat.rotateX(q, q, .01 * Math.sin(t + 1));
+		quat.rotateY(q, q, .02 * Math.sin(t + 2));
+		quat.rotateZ(q, q, .03 * Math.sin(t + 3));
+
+		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+		
+		gl.useProgram(progq);
+		gl.uniform1i(usmp, 0);
+		gl.uniform1f(ufade, 0.0);
+		gl.activeTexture(gl.TEXTURE0);
+		gl.bindTexture(gl.TEXTURE_2D, textures[f % 2]);
+		gl.bindBuffer(gl.ARRAY_BUFFER, qbuf);
+		gl.vertexAttribPointer(apositionq, 2, gl.FLOAT, false, 0, 0);
+		gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+		++f;
+		t += dt;
+	};
+
+	animate(gl, canvas, frame, viewportchanged);
+});
+</script>
+</head>
+<body class='bl'>
+<pre class='shader' id='vsq'>
+precision mediump float;
+
+attribute vec2 position;
+varying vec2 uv;
+
+void main() {
+	gl_Position = vec4(position, -1.0, 1.0);
+	uv = .5 * (position + vec2(1.0));
+}
+</pre>
+<pre class='shader' id='fsq'>
+precision mediump float;
+
+varying vec2 uv;
+
+uniform sampler2D smp;
+uniform float fade;
+
+void main() {
+	gl_FragColor = texture2D(smp, uv);
+	gl_FragColor.w = 1.0 - fade;
+}
+</pre>
+<pre class='shader' id='vsc'>
+precision mediump float;
+
+uniform mat4 modelmat;
+uniform mat4 pmat;
+uniform float t;
+
+attribute vec3 position;
+
+void main() {
+	vec4 wpos = modelmat * vec4(position, 1.0);
+	gl_Position = pmat * wpos;
+}
+</pre>
+<pre class='shader' id='fsc'>
+precision mediump float;
+
+uniform float t;
+
+void main() {
+	gl_FragColor = vec4(0.0, 0.0, 1.0, min(1.0, t * t / 16.0));
+}
+</pre>
+</body>
+</html>
