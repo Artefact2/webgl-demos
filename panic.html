@@ -13,8 +13,6 @@ $(function() {
 	var canvas = document.createElement('canvas');
 	var body = $('body');
 	body.append(canvas);
-
-	/* XXX: dots, "morph" effects */
 	
 	var gl = create_context(canvas);
 	if(gl === false) return;
@@ -47,11 +45,14 @@ $(function() {
 	gl.useProgram(prog);
 
 	var aposition = gl.getAttribLocation(prog, "position");
+	var aposition2 = gl.getAttribLocation(prog, "position2");
 	gl.enableVertexAttribArray(aposition);
-
+	gl.enableVertexAttribArray(aposition2);
+	
 	var umodelmat = gl.getUniformLocation(prog, "modelmat");
 	var upmat = gl.getUniformLocation(prog, "pmat");
 	var ut = gl.getUniformLocation(prog, "t");
+	var umt = gl.getUniformLocation(prog, "mt");
 
 	var q = quat.create();
 	var modelmat = mat4.create();
@@ -69,36 +70,120 @@ $(function() {
 	]), gl.STATIC_DRAW);
 
 	var cbuf = gl.createBuffer();
-	gl.bindBuffer(gl.ARRAY_BUFFER, cbuf);
-	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-		-1.0, -1.0, -1.0,
-		-1.0, -1.0, 1.0,
-		-1.0, -1.0, -1.0,
-		-1.0, 1.0, -1.0,
-		-1.0, 1.0, 1.0,
-		-1.0, 1.0, -1.0,
-		-1.0, 1.0, 1.0,
-		-1.0, -1.0, 1.0,
-		
-		1.0, -1.0, -1.0,
-		1.0, -1.0, 1.0,
-		1.0, -1.0, -1.0,
-		1.0, 1.0, -1.0,
-		1.0, 1.0, 1.0,
-		1.0, 1.0, -1.0,
-		1.0, 1.0, 1.0,
-		1.0, -1.0, 1.0,
 
-		1.0, 1.0, 1.0,
-		-1.0, 1.0, 1.0,
-		1.0, 1.0, -1.0,
-		-1.0, 1.0, -1.0,
-		1.0, -1.0, 1.0,
-		-1.0, -1.0, 1.0,
-		1.0, -1.0, -1.0,
-		-1.0, -1.0, -1.0,
+	var gen_cube = function(out, npts, stride, offset) {
+		npts /= 12;
+
+		var k = offset, p;
 		
-	]), gl.STATIC_DRAW);
+		for(var i = 0; i < npts; ++i) {
+			p = 2.0 * (i / npts - .5);
+			
+			out[k] = 1.0; out[k+1] = 1.0; out[k+2] = p; k += stride;
+			out[k] = 1.0; out[k+1] = -1.0; out[k+2] = p; k += stride;
+			out[k] = -1.0; out[k+1] = 1.0; out[k+2] = p; k += stride;
+			out[k] = -1.0; out[k+1] = -1.0; out[k+2] = p; k += stride;
+			
+			out[k] = 1.0; out[k+1] = p; out[k+2] = 1.0; k += stride;
+			out[k] = 1.0; out[k+1] = p; out[k+2] = -1.0; k += stride;
+			out[k] = -1.0; out[k+1] = p; out[k+2] = 1.0; k += stride;
+			out[k] = -1.0; out[k+1] = p; out[k+2] = -1.0; k += stride;
+			
+			out[k] = p; out[k+1] = 1.0; out[k+2] = 1.0; k += stride;
+			out[k] = p; out[k+1] = 1.0; out[k+2] = -1.0; k += stride;
+			out[k] = p; out[k+1] = -1.0; out[k+2] = 1.0; k += stride;
+			out[k] = p; out[k+1] = -1.0; out[k+2] = -1.0; k += stride;
+		}
+	};
+
+	var gen_33grid = function(out, npts, stride, offset) {
+		npts /= 6;
+
+		var k = offset, p;
+		
+		for(var i = 0; i < npts; ++i) {
+			p = 2.0 * (i / npts - .5);
+			
+			out[k] = p; out[k+1] = -.8; out[k+2] = 0.0; k += stride;
+			out[k] = p; out[k+1] = 0.0; out[k+2] = 0.0; k += stride;
+			out[k] = p; out[k+1] = 0.8; out[k+2] = 0.0; k += stride;
+			out[k] = -.8; out[k+1] = p; out[k+2] = 0.0; k += stride;
+			out[k] = 0.0; out[k+1] = p; out[k+2] = 0.0; k += stride;
+			out[k] = 0.8; out[k+1] = p; out[k+2] = 0.0; k += stride;
+		}
+	};
+
+	var gen_uvsphere = function(out, npts, stride, offset) {
+		var k = offset, m = Math.sqrt(npts), x, y, z, theta, r;
+				
+		for(var u = 0; u < m; ++u) {
+			y = Math.sin(-Math.PI / 2 + Math.PI * u / (m - 1));
+			r = Math.sqrt(1.0 - y*y);
+			
+			for(var v = 0; v < m; ++v) {
+				theta = Math.PI * 2 * v / m;
+				x = r * Math.cos(theta);
+				z = r * Math.sin(theta);
+				
+				out[k] = x; out[k+1] = y; out[k+2] = z; k += stride;
+			}
+		}
+	}
+
+	var gen_torus = function(out, npts, stride, offset) {
+		var k = offset, m = Math.sqrt(npts), rx, ry, theta, ct, st;
+				
+		for(var u = 0; u < m; ++u) {
+			theta = 2.0 * Math.PI * u / m;
+			ct = Math.cos(theta);
+			st = Math.sin(theta);
+			
+			for(var v = 0; v < m; ++v) {
+				theta = 2.0 * Math.PI * v / m;
+				rx = 1.0 + .5 * Math.cos(theta);
+				ry = .5 * Math.sin(theta);
+				
+				out[k] = ct * rx;
+				out[k+1] = ry;
+				out[k+2] = -st * rx;
+				k += stride;
+			}
+		}
+	}
+
+	var gen_pyramid = function(out, npts, stride, offset) {
+		var k = offset, p, x;
+		npts /= 8;
+
+		for(var i = 0; i < npts; ++i) {
+			p = 2.0 * (i / npts - .5);
+			x = 1.0 - i / (npts - 1);
+			
+			out[k] = 1.0; out[k+1] = -1.0; out[k+2] = p; k += stride;
+			out[k] = -1.0; out[k+1] = -1.0; out[k+2] = p; k += stride;
+			out[k] = p; out[k+1] = -1.0; out[k+2] = 1.0; k += stride;
+			out[k] = p; out[k+1] = -1.0; out[k+2] = -1.0; k += stride;
+			
+			out[k] = x; out[k+1] = p; out[k+2] = x; k += stride;
+			out[k] = -x; out[k+1] = p; out[k+2] = x; k += stride;
+			out[k] = x; out[k+1] = p; out[k+2] = -x; k += stride;
+			out[k] = -x; out[k+1] = p; out[k+2] = -x; k += stride;
+		}
+	};
+
+	var gen_buffer = function(npts) {
+		var stride = 15;
+		var buf = new Float32Array(stride * npts);
+
+		gen_cube(buf, npts, stride, 3);
+		gen_33grid(buf, npts, stride, 6);
+		gen_uvsphere(buf, npts, stride, 0);
+		gen_pyramid(buf, npts, stride, 12);
+		gen_torus(buf, npts, stride, 9);
+		
+		gl.bindBuffer(gl.ARRAY_BUFFER, cbuf);
+		gl.bufferData(gl.ARRAY_BUFFER, buf, gl.STATIC_DRAW);
+	};
 
 	var viewportchanged = function(nw, nh) {
 		gl.useProgram(prog);
@@ -114,6 +199,13 @@ $(function() {
 	var t = 0, f = 0;
 	var fade = .05;
 	var dt = 1 / 60.0;
+	var morph = 5.0;
+	var mduty = .5;
+	var npts = 1296; /* must be multiple of 12 (cube), 6 (33grid), 8 (pyramid)
+					  * perfect square (uvsphere,torus) */
+	var stride = 5 * 3 * 4;
+
+	gen_buffer(npts);
 	
 	add_menu_entry_range("fade", {
 		min: .001,
@@ -132,6 +224,26 @@ $(function() {
 		log: true,
 		onchange: function(oldv, newv) {
 			dt = newv;
+		},
+	});
+	
+	add_menu_entry_range("morph", {
+		min: 1.0,
+		max: 10.0,
+		init: morph,
+		log: true,
+		onchange: function(oldv, newv) {
+			morph = newv;
+		},
+	});
+	
+	add_menu_entry_range("mduty", {
+		min: .2,
+		max: 1.0,
+		init: mduty,
+		log: true,
+		onchange: function(oldv, newv) {
+			mduty = newv;
 		},
 	});
 
@@ -159,8 +271,12 @@ $(function() {
 		gl.uniformMatrix4fv(umodelmat, false, new Float32Array(modelmat));
 		
 		gl.bindBuffer(gl.ARRAY_BUFFER, cbuf);
-		gl.vertexAttribPointer(aposition, 3, gl.FLOAT, false, 0, 0);
-		gl.drawArrays(gl.LINES, 0, 24);
+		var tm = Math.max(t - 3.0, 0.0);
+		var k = Math.floor(tm / morph);
+		gl.uniform1f(umt, Math.max(0.0, Math.min(1.0, (((tm - morph * k) / morph) - .5) / mduty + .5)));
+		gl.vertexAttribPointer(aposition, 3, gl.FLOAT, false, stride, (12 * k) % stride);
+		gl.vertexAttribPointer(aposition2, 3, gl.FLOAT, false, stride, (12 * k + 12) % stride);
+		gl.drawArrays(gl.POINTS, 0, npts);
 
 		quat.rotateX(q, q, .01 * Math.sin(t + 1));
 		quat.rotateY(q, q, .02 * Math.sin(t + 2));
@@ -216,11 +332,15 @@ precision mediump float;
 uniform mat4 modelmat;
 uniform mat4 pmat;
 uniform float t;
+uniform float mt;
 
 attribute vec3 position;
+attribute vec3 position2;
 
 void main() {
-	vec4 wpos = modelmat * vec4(position, 1.0);
+	/* XXX this sucks */
+	vec3 pos = mix(position, position2, smoothstep(0.0, 1.0, mt));
+	vec4 wpos = modelmat * vec4(pos, 1.0);
 	gl_Position = pmat * wpos;
 }
 </pre>
