@@ -19,7 +19,7 @@ $(function() {
 
 	gl.enable(gl.DEPTH_TEST);
 
-	/* XXX: curvature, fog, lights, shadows, colors */
+	/* XXX: curvature, lights, shadows, colors */
 
 	var prog = create_program_vf(gl, $("pre#noise2D").text() + $("pre#vs").text(), $("pre#fs").text())[0];
 	gl.useProgram(prog);
@@ -40,12 +40,12 @@ $(function() {
 	var buf = gl.createBuffer();
 	
 	var gen_terrain = function(buffer, detail) {
-		var nverts = 6 * detail * detail;
+		var nverts = 2 * 6 * detail * detail;
 		var vertices = new Float32Array(3 * nverts);
 		var k = 0, d = 1 / (detail - 1), x, z;
 
-		for(var i = 0; i < detail; ++i) {
-			x = -.5 + i * d;
+		for(var i = 0; i < (2 * detail); ++i) {
+			x = -1.0 + i * d;
 			
 			for(var j = 0; j < detail; ++j) {
 				z = -(j+1) * d;
@@ -74,8 +74,8 @@ $(function() {
 
 	var camerachanged = function() {
 		cmat = mat4.create();
-		mat4.translate(cmat, cmat, [ 0.0, -camy, 0.0 ]);
 		mat4.rotateX(cmat, cmat, -camrx);
+		mat4.translate(cmat, cmat, [ 0.0, -camy, 1.0 ]);
 		gl.uniformMatrix4fv(ucmat, false, new Float32Array(cmat));
 	};
 
@@ -83,9 +83,9 @@ $(function() {
 		nverts = gen_terrain(buf, detail);
 	};
 
-	var camy = 8.0;
-	var camrx = -.6;
-	var fov = 1.5;
+	var camy = 7.0;
+	var camrx = -.7;
+	var fov = 2.0;
 	var size = 50;
 	var detail = 200;
 	var nverts;
@@ -94,10 +94,9 @@ $(function() {
 	meshchanged();
 	
 	add_menu_entry_range("camY", {
-		min: 0.01,
-		max: 10.0,
+		min: 0,
+		max: 20,
 		init: camy,
-		log: true,
 		onchange: function(oldv, newv) {
 			camy = newv;
 			camerachanged();
@@ -151,6 +150,10 @@ $(function() {
 			scaley = newv;
 		},
 	});
+
+	add_shortcut("s", "new seed", function() {
+		t0 += 1000000 * Math.random();
+	});
 	
 	var t0 = (new Date()).getTime() + 1000000 * Math.random(), t;
 	
@@ -202,10 +205,15 @@ void main() {
 <pre class='shader' id='fs'>
 precision mediump float;
 
+uniform float size;
+
 varying vec3 pos;
 
 void main() {
-	gl_FragColor = vec4(vec3(pos.y), 1.0);
+	gl_FragColor = vec4(vec3(mix(pos.y, 0.0, max(
+		smoothstep(-.5 * size, -size, pos.z),
+		smoothstep(.5 * size, size, abs(pos.x)
+				  )))), 1.0);
 }
 </pre>
 <pre class='shader' id='noise2D'>
