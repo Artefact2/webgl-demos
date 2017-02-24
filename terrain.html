@@ -61,6 +61,14 @@ $(function() {
 				vertices[k] = x+d; vertices[k+1] = 0.0; vertices[k+2] = z+d; k += 3;
 			}
 		}
+
+		/* XXX: use a LUT for speeding up ops */
+		/* XXX: causes noticeable "jump" b/c of z translation */
+		/*for(var i = 0; i < vertices.length; i += 3) {
+			x = vertices[i];
+			z = vertices[i+2];
+			vertices[i+1] = Math.sqrt(2 - x*x - z*z) - Math.sqrt(2);
+		}*/
 		
 		gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
 		gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
@@ -190,7 +198,7 @@ varying vec3 pos;
 void main() {
 	float tz = floor(t / step) * step;
 	
-	pos = position * size;
+	pos.xz = position.xz * size;
 	pos.y = (
 		16.0 * snoise(vec2(pos.x / 16.0, (pos.z - tz) / 16.0))
 			+ 8.0 * snoise(vec2(pos.x / 8.0, (pos.z - tz) / 8.0))
@@ -199,7 +207,7 @@ void main() {
 			+ 1.0 * snoise(vec2(pos.x / 1.0, (pos.z - tz) / 1.0))
 	) / 61.0 + .5;
 	pos.z += fract(t / step) * step;
-	gl_Position = pmat * cmat * vec4(pos.x, pos.y * scaley, pos.z, 1.0);
+	gl_Position = pmat * cmat * vec4(pos.x, position.y * size + pos.y * scaley, pos.z, 1.0);
 }
 </pre>
 <pre class='shader' id='fs'>
